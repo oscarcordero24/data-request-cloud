@@ -1,0 +1,130 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100&display=swap');
+
+/* *{
+    font-family: "Poppins", sans-serif;
+} */
+
+:root 
+{
+    --background-body: #fff;
+    --background-color-1: darkblue;
+    --background-color-2: darkblue;
+    --background-color-3: #fff;
+    --border-color-1: #191919;
+    --border-color-2: #C6C6C6;
+    --background-info-table: #EDEDED;
+    --color-active: #74b3ff;
+    --body-width: 100%;
+    --body-width-before: 1074px; /* body width - 6px */
+    --shadow-box: 0px 5px 5px rgba(0, 0, 0, 0.2);
+    --font-color-1: #FFFFFF;
+    --font-color-2: #000;
+    --font-color-3: rgb(74, 74, 74);
+    --checkbox-border-color: #000;
+    --color-blue-1: blue;
+    --color-gray-for-text: rgb(82, 82, 82);
+    --color-qaqc-text: red;
+
+    --progress-bar-color: darkblue;
+}
+
+#page-container.hidden {
+    display: none;
+}
+
+#popup-window.hidden {
+    display: none;
+}
+
+#footer.hidden {
+    display: none;
+}
+
+#maintenance-page.hidden{
+    display: none
+}
+
+#maintenance-page{
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+#maintenance-page .text-div{
+    width: 40%;
+    height: 50%;
+}
+
+#maintenance-page .text-div h1{
+    text-align: center;
+    padding-bottom: 1em;
+}
+
+#maintenance-page .text-div p{
+    text-align: justify;
+    font-size: 1.2em;
+}
+
+#maintenance-page .text-div p span{
+    color: blue;
+    font-weight: bold;
+}
+
+#content-body {
+    width: var(--body-width);
+    margin: auto;
+    font-size: 14px;
+    background: var(--background-body);
+    color: var(--font-color-2);
+}
+
+#content-body.dark {
+    --background-body: #525252;
+    --background-color-1: #191919;
+    --background-color-2: #000;
+    --background-color-3: #5f5f5f;
+    --border-color-1: #fff;
+    --border-color-2: #000;
+    --background-info-table: #000;
+    --color-active: #2276d6;
+    --body-width: 100%;
+    --body-width-before: 1074px; /* body width - 6px */
+    --shadow-box: 0px 5px 5px rgba(255, 255, 255, 0.2);
+    --font-color-1: #fff;
+    --font-color-2: #fff;
+    --font-color-3: #e0e0e0;
+    --checkbox-border-color: #fff;
+    --color-blue-1: rgb(180, 180, 255);
+    --color-gray-for-text: rgb(224, 224, 224);
+    --color-qaqc-text: rgb(255, 151, 151);
+
+    --progress-bar-color: rgb(85, 85, 250);
+}
+
+#loading-image {
+    display: none;
+}
+
+#loading-image.show {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%,-50%);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 300px;
+    height: 200px;
+    border-radius: 30px;
+    background: rgb(255, 255, 255);
+    box-shadow: 0 5px 30px rgba(0,0,0,0.30);
+    z-index: 100;
+}
+
+.page-content.blur {
+    filter: blur(20px);
+    pointer-events: none;
+}
