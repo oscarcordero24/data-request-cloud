@@ -2,7 +2,7 @@ import {
     fetchJsonFile,
     fetchJsonFileV01,
     convertUTCtoCentralTime
-} from '../../js/requestData.js';
+} from '../js/requestData.js';
 import {
     blurBackground,
     getNames,
@@ -155,7 +155,8 @@ if (isMaintenance){
             }
         
             // Define the URL to fetch location groups based on category
-            const categoryApiUrl = setBaseUrl + `location/group?office=${office}&include-assigned=false&location-category-like=${setCategory}`;
+            // const categoryApiUrl = setBaseUrl + `location/group?office=${office}&include-assigned=false&location-category-like=${setCategory}`;
+            const categoryApiUrl = setBaseUrl + `location/group?office=${office}&group-office-id=${office}&category-office-id=${office}&category-id=${setCategory}`;
             console.log("categoryApiUrl: ", categoryApiUrl);
         
             // Initialize maps to store metadata and time-series ID (TSID) data for various parameters
