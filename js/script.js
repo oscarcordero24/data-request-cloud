@@ -45,6 +45,7 @@ let domain = "https://coe-mvsuwa04mvs.mvs.usace.army.mil:8243/mvs-data";
 // Const Elements
 const basinName = document.getElementById('basinCombobox'),
       gageName = document.getElementById('gageCombobox'),
+      officeNameDropdown = document.getElementById('officeCombobox'),
       beginDate = document.getElementById('begin-input'),
       endDate = document.getElementById('end-input'),
       PORBeginDate = document.querySelector('#info-table .por-start'),
@@ -123,23 +124,84 @@ if (isMaintenance){
         darkModeCheckbox.checked = userData.darkMode;
     }
 
-    try{
-        document.addEventListener('DOMContentLoaded', async function () {
-            // Display the loading indicator for water quality alarm
-            //const loadingIndicator = document.getElementById('loading_alarm_datman');
-            //loadingIndicator.style.display = 'block'; // Show the loading indicator
-        
-            // Disable all elements until the page is fully loaded
-            disableButtons();
-            disableFilesBtns();
-            disableBasinFilesBtns();
-        
-            // Set the category and base URL for API calls
-            let setCategory = "Datman"; // 'Stage' for hourly
-        
+}
+
+initialize();
+
+/*======================= Functions For Script =======================*/
+function initialize() {
+
+    if(haveClass(loadingDiv,'show')){
+        loadingDiv.classList.remove('show');
+    }
+
+    getExcelBtn.disabled = true;
+    getJSONBtn.disabled = true;
+    basinExcelBtn.disabled = true;
+    basinJSONBtn.disabled = true;
+
+    // Add dark mode functionality
+    darkModeCheckbox.addEventListener('click', toggleDarkModeBtn);
+
+    let offices = [
+        "MVS", "CERL", "CHL",  "CPC",  "CRREL","CWMS", "EL",   "ERD",  "GSL",  "HEC",
+        "HQ",   "ITL",  "IWR",  "LCRA", "LRB",  "LRC",  "LRD",  "LRDG", "LRDO",
+        "LRE",  "LRH",  "LRL",  "LRN",  "LRP",  "MVD",  "MVK",  "MVM",  "MVN",
+        "MVP",  "MVR",  "MVS",  "NAB",  "NAD",  "NAE",  "NAN",  "NAO",  "NAP",
+        "NDC",  "NWD",  "NWDM", "NWDP", "NWK",  "NWO",  "NWP",  "NWS",  "NWW",
+        "POA",  "POD",  "POH",  "SAC",  "SAD",  "SAJ",  "SAM",  "SAS",  "SAW",
+        "SPA",  "SPD",  "SPK",  "SPL",  "SPN",  "SWD",  "SWF",  "SWG",  "SWL",
+        "SWT",  "TEC",  "WCSC", "WPC"
+    ]
+
+    // Add office name to dropdown list
+    offices.forEach((item) => {
+        let option = document.createElement('option');
+
+        option.value = item;
+        option.textContent = item;
+
+        officeNameDropdown.append(option);
+    });  
+
+    let selectOfficeOption = document.createElement('option');
+    selectOfficeOption.value = "Select Office";
+    selectOfficeOption.text = "Select Office";
+
+    officeNameDropdown.insertBefore(selectOfficeOption, officeNameDropdown.firstChild);
+    officeNameDropdown.selectedIndex = 0;  
+
+    gageName.disabled = true;
+    basinName.disabled = true;
+
+    beginDate.disabled = true;
+    endDate.disabled = true;
+
+    dailyCheckbox.disabled = true;
+    hourlyCheckbox.disabled = true;
+
+    officeNameDropdown.addEventListener('change', async function() {
+
+        try {
+            //loadingPageData();
+
+            if (haveClass(errorMessageDiv, 'show')){
+                errorMessageDiv.classList.remove('show');
+            }  
+
+            loadingDiv.classList.add('show')
+
+            // Disable all elements
+            basinName.disabled = true;
+            gageName.disabled = true;
+            beginDate.disabled = true;
+            endDate.disabled = true;
+
+            let setCategory = "Basins"; 
             let cda = "internal";
-            let office = "MVS";
-            let type = "no idea";
+            
+            let officeName = officeNameDropdown.value;
+            //let type = "no idea";
         
             // Get the current date and time, and compute a "look-back" time for historical data
             const currentDateTime = new Date();
@@ -147,17 +209,14 @@ if (isMaintenance){
         
             let setBaseUrl = null;
             if (cda === "internal") {
-                setBaseUrl = `https://coe-${office.toLowerCase()}uwa04${office.toLowerCase()}.${office.toLowerCase()}.usace.army.mil:8243/${office.toLowerCase()}-data/`;
-                console.log("setBaseUrl: ", setBaseUrl);
+                setBaseUrl = `https://coe-${officeName.toLowerCase()}uwa04${officeName.toLowerCase()}.${officeName.toLowerCase()}.usace.army.mil:8243/${officeName.toLowerCase()}-data/`;
             } else if (cda === "public") {
                 setBaseUrl = `https://cwms-data.usace.army.mil/cwms-data/`;
-                console.log("setBaseUrl: ", setBaseUrl);
             }
         
             // Define the URL to fetch location groups based on category
             // const categoryApiUrl = setBaseUrl + `location/group?office=${office}&include-assigned=false&location-category-like=${setCategory}`;
-            const categoryApiUrl = setBaseUrl + `location/group?office=${office}&group-office-id=${office}&category-office-id=${office}&category-id=${setCategory}`;
-            console.log("categoryApiUrl: ", categoryApiUrl);
+            const categoryApiUrl = setBaseUrl + `location/group?office=${officeName}&group-office-id=${officeName}&category-office-id=${officeName}&category-id=${setCategory}`;
         
             // Initialize maps to store metadata and time-series ID (TSID) data for various parameters
             const metadataMap = new Map();
@@ -165,6 +224,8 @@ if (isMaintenance){
             const tsidDatmanMap = new Map();
             const tsidStageMap = new Map();
             const projectMap = new Map();
+            const tsidDatmanInflowMap = new Map();
+            const tsidDatmanOutflowMap = new Map();
         
             // Initialize arrays for storing promises
             const metadataPromises = [];
@@ -172,6 +233,8 @@ if (isMaintenance){
             const datmanTsidPromises = [];
             const stageTsidPromises = [];
             const projectPromises = [];
+            const datmanInflowTsidPromises = [];
+            const datmanOutflowTsidPromises = [];
         
             // Fetch location group data from the API
             fetch(categoryApiUrl)
@@ -188,7 +251,7 @@ if (isMaintenance){
                     }
         
                     // Filter and map the returned data to basins belonging to the target category
-                    const targetCategory = { "office-id": office, "id": setCategory };
+                    const targetCategory = { "office-id": officeName, "id": setCategory };
                     const filteredArray = filterByLocationCategory(data, targetCategory);
                     const basins = filteredArray.map(item => item.id);
         
@@ -203,8 +266,7 @@ if (isMaintenance){
         
                     // Loop through each basin and fetch data for its assigned locations
                     basins.forEach(basin => {
-                        const basinApiUrl = setBaseUrl + `location/group/${basin}?office=${office}&category-id=${setCategory}`;
-                        console.log("basinApiUrl: ", basinApiUrl);
+                        const basinApiUrl = setBaseUrl + `location/group/${basin}?office=${officeName}&category-id=${setCategory}`;
         
                         apiPromises.push(
                             fetch(basinApiUrl)
@@ -233,7 +295,7 @@ if (isMaintenance){
                                             // console.log(loc['location-id']);
         
                                             // Fetch metadata for each location
-                                            const locApiUrl = setBaseUrl + `locations/${loc['location-id']}?office=${office}`;
+                                            const locApiUrl = setBaseUrl + `locations/${loc['location-id']}?office=${officeName}`;
                                             // console.log("locApiUrl: ", locApiUrl);
                                             metadataPromises.push(
                                                 fetch(locApiUrl)
@@ -256,7 +318,7 @@ if (isMaintenance){
                                             );
         
                                             // Fetch owner for each location
-                                            let ownerApiUrl = setBaseUrl + `location/group/${office}?office=${office}&category-id=${office}`;
+                                            let ownerApiUrl = setBaseUrl + `location/group/Datman?office=${officeName}&category-id=${officeName}`;
                                             if (ownerApiUrl) {
                                                 ownerPromises.push(
                                                     fetch(ownerApiUrl)
@@ -272,7 +334,6 @@ if (isMaintenance){
                                                         })
                                                         .then(ownerData => {
                                                             if (ownerData) {
-                                                                console.log("ownerData", ownerData);
                                                                 ownerMap.set(loc['location-id'], ownerData);
                                                             }
                                                         })
@@ -282,9 +343,8 @@ if (isMaintenance){
                                                 );
                                             }
         
-        
                                             // Fetch project for each location
-                                            let projectApiUrl = setBaseUrl + `location/group/Project?office=${office}&category-id=${office}`;
+                                            let projectApiUrl = setBaseUrl + `location/group/Project?office=${officeName}&category-id=${officeName}`;
                                             if (projectApiUrl) {
                                                 projectPromises.push(
                                                     fetch(projectApiUrl)
@@ -299,7 +359,6 @@ if (isMaintenance){
                                                             return response.json();
                                                         })
                                                         .then(projectData => {
-                                                            console.log("Promise Data: ", projectData);
                                                             if (projectData) {
                                                                 projectMap.set(loc['location-id'], projectData);
                                                             }
@@ -308,11 +367,11 @@ if (isMaintenance){
                                                             console.error(`Problem with the fetch operation for stage TSID data at ${projectApiUrl}:`, error);
                                                         })
                                                 );
-                                            };
+                                            }
         
         
                                             // Fetch datman TSID data
-                                            const tsidDatmanApiUrl = setBaseUrl + `timeseries/group/Datman?office=${office}&category-id=${loc['location-id']}`;
+                                            const tsidDatmanApiUrl = setBaseUrl + `timeseries/group/Datman?office=${officeName}&category-id=${loc['location-id']}`;
                                             // console.log('tsidDatmanApiUrl:', tsidDatmanApiUrl);
                                             datmanTsidPromises.push(
                                                 fetch(tsidDatmanApiUrl)
@@ -332,9 +391,51 @@ if (isMaintenance){
                                                     })
                                             );
         
+                                            // Fetch Inflow TSID data
+                                            const tsidDatmanInflowApiUrl = setBaseUrl + `timeseries/group/Datman-Inflow?office=${officeName}&category-id=${loc['location-id']}`;
+                                            // console.log('tsidDatmanInflowApiUrl:', tsidDatmanInflowApiUrl);
+                                            datmanInflowTsidPromises.push(
+                                                fetch(tsidDatmanInflowApiUrl)
+                                                    .then(response => {
+                                                        if (response.status === 404) return null; // Skip if not found
+                                                        if (!response.ok) throw new Error(`Network response was not ok: ${response.statusText}`);
+                                                        return response.json();
+                                                    })
+                                                    .then(tsidDatmanInflowData => {
+                                                        // console.log('tsidDatmanInflowData:', tsidDatmanInflowData);
+                                                        if (tsidDatmanInflowData) {
+                                                            tsidDatmanInflowMap.set(loc['location-id'], tsidDatmanInflowData);
+                                                        }
+                                                    })
+                                                    .catch(error => {
+                                                        console.error(`Problem with the fetch operation for stage TSID data at ${tsidDatmanInflowApiUrl}:`, error);
+                                                    })
+                                            );
+        
+                                            // Fetch Outflow TSID data
+                                            const tsidDatmanOutflowApiUrl = setBaseUrl + `timeseries/group/Datman-Outflow?office=${officeName}&category-id=${loc['location-id']}`;
+                                            // console.log('tsidDatmanInflowApiUrl:', tsidDatmanInflowApiUrl);
+                                            datmanOutflowTsidPromises.push(
+                                                fetch(tsidDatmanOutflowApiUrl)
+                                                    .then(response => {
+                                                        if (response.status === 404) return null; // Skip if not found
+                                                        if (!response.ok) throw new Error(`Network response was not ok: ${response.statusText}`);
+                                                        return response.json();
+                                                    })
+                                                    .then(tsidDatmanOutflowData => {
+                                                        // console.log('tsidDatmanInflowData:', tsidDatmanInflowData);
+                                                        if (tsidDatmanOutflowData) {
+                                                            tsidDatmanOutflowMap.set(loc['location-id'], tsidDatmanOutflowData);
+                                                        }
+                                                    })
+                                                    .catch(error => {
+                                                        console.error(`Problem with the fetch operation for stage TSID data at ${tsidDatmanOutflowApiUrl}:`, error);
+                                                    })
+                                            );
+        
                                             // Fetch stage TSID data
-                                            const tsidStageApiUrl = setBaseUrl + `timeseries/group/Datman-Stage?office=${office}&category-id=${loc['location-id']}`;
-                                            // console.log('tsidDatmanApiUrl:', tsidDatmanApiUrl);
+                                            const tsidStageApiUrl = setBaseUrl + `timeseries/group/Stage?office=${officeName}&category-id=${loc['location-id']}`;
+                                            // console.log('tsidStageApiUrl:', tsidStageApiUrl);
                                             stageTsidPromises.push(
                                                 fetch(tsidStageApiUrl)
                                                     .then(response => {
@@ -343,7 +444,7 @@ if (isMaintenance){
                                                         return response.json();
                                                     })
                                                     .then(tsidStageData => {
-                                                        // console.log('tsidDatmanData:', tsidDatmanData);
+                                                        // console.log('tsidStageData:', tsidStageData);
                                                         if (tsidStageData) {
                                                             tsidStageMap.set(loc['location-id'], tsidStageData);
                                                         }
@@ -367,7 +468,8 @@ if (isMaintenance){
                         .then(() => Promise.all(ownerPromises))
                         .then(() => Promise.all(datmanTsidPromises))
                         .then(() => Promise.all(stageTsidPromises))
-                        .then(() => Promise.all(projectPromises))
+                        .then(() => Promise.all(datmanInflowTsidPromises))
+                        .then(() => Promise.all(datmanOutflowTsidPromises))
                         .then(() => {
                             combinedData.forEach(basinData => {
                                 if (basinData['assigned-locations']) {
@@ -401,6 +503,24 @@ if (isMaintenance){
                                             loc['tsid-datman'] = null;  // Append null if missing
                                         }
         
+                                        // Add datman Inflow to json
+                                        const tsidDatmanInflowMapData = tsidDatmanInflowMap.get(loc['location-id']);
+                                        if (tsidDatmanInflowMapData) {
+                                            reorderByAttribute(tsidDatmanInflowMapData);
+                                            loc['tsid-datman-inflow'] = tsidDatmanInflowMapData;
+                                        } else {
+                                            loc['tsid-datman-inflow'] = null;  // Append null if missing
+                                        }
+        
+                                        // Add datman Outflow to json
+                                        const tsidDatmanOutflowMapData = tsidDatmanOutflowMap.get(loc['location-id']);
+                                        if (tsidDatmanOutflowMapData) {
+                                            reorderByAttribute(tsidDatmanOutflowMapData);
+                                            loc['tsid-datman-outflow'] = tsidDatmanOutflowMapData;
+                                        } else {
+                                            loc['tsid-datman-outflow'] = null;  // Append null if missing
+                                        }
+        
                                         // Add stage to json
                                         const tsidStageMapData = tsidStageMap.get(loc['location-id']);
                                         if (tsidStageMapData) {
@@ -410,15 +530,16 @@ if (isMaintenance){
                                             loc['tsid-stage'] = null;  // Append null if missing
                                         }
         
-        
                                         // Initialize empty arrays to hold API and last-value data for various parameters
                                         loc['datman-api-data'] = [];
                                         loc['datman-last-value'] = [];
+        
+                                        // Initialize empty arrays to hold API and last-value data for various parameters
+                                        loc['stage-api-data'] = [];
+                                        loc['stage-last-value'] = [];
                                     });
                                 }
                             });
-        
-                            console.log('combinedData:', combinedData);
         
                             const timeSeriesDataPromises = [];
         
@@ -427,14 +548,15 @@ if (isMaintenance){
                                 for (const locData of dataArray['assigned-locations'] || []) {
                                     // Handle temperature, depth, and DO time series
                                     const datmanTimeSeries = locData['tsid-datman']?.['assigned-time-series'] || [];
-                                    const stageTimeSeries = locData['tsid-stage']?.['assigned-time-series'] || [];
+                                    const datmanInflowTimeSeries = locData['tsid-datman-inflow']?.['assigned-time-series'] || [];
+                                    const datmanOutflowTimeSeries = locData['tsid-datman-outflow']?.['assigned-time-series'] || [];
         
                                     // Function to create fetch promises for time series data
                                     const timeSeriesDataFetchPromises = (timeSeries, type) => {
                                         return timeSeries.map((series, index) => {
                                             const tsid = series['timeseries-id'];
-                                            const timeSeriesDataApiUrl = setBaseUrl + `timeseries?name=${tsid}&begin=${lookBackHours.toISOString()}&end=${currentDateTime.toISOString()}&office=${office}`;
-                                            console.log('timeSeriesDataApiUrl:', timeSeriesDataApiUrl);
+                                            const timeSeriesDataApiUrl = setBaseUrl + `timeseries?name=${tsid}&begin=${lookBackHours.toISOString()}&end=${currentDateTime.toISOString()}&office=${officeName}`;
+                                            
         
                                             return fetch(timeSeriesDataApiUrl, {
                                                 method: 'GET',
@@ -529,11 +651,12 @@ if (isMaintenance){
         
                                     // Create promises for temperature, depth, and DO time series
                                     const datmanPromises = timeSeriesDataFetchPromises(datmanTimeSeries, 'datman');
+                                    const datmanInflowPromises = timeSeriesDataFetchPromises(datmanInflowTimeSeries, 'datman-inflow');
+                                    const datmanOutflowPromises = timeSeriesDataFetchPromises(datmanOutflowTimeSeries, 'datman-outflow');
         
                                     // Additional API call for extents data
                                     const timeSeriesDataExtentsApiCall = (type) => {
-                                        const extentsApiUrl = setBaseUrl + `catalog/TIMESERIES?page-size=5000&office=${office}`;
-                                        console.log('extentsApiUrl:', extentsApiUrl);
+                                        const extentsApiUrl = setBaseUrl + `catalog/TIMESERIES?page-size=5000&office=${officeName}`;
         
                                         return fetch(extentsApiUrl, {
                                             method: 'GET',
@@ -548,8 +671,9 @@ if (isMaintenance){
         
                                                 // Collect TSIDs from temp, depth, and DO time series
                                                 const datmanTids = datmanTimeSeries.map(series => series['timeseries-id']);
-                                                const stageTids = stageTimeSeries.map(series => series['timeseries-id']);
-                                                const allTids = [...datmanTids, ...stageTids]; // Combine both arrays
+                                                const datmanInflowTids = datmanInflowTimeSeries.map(series => series['timeseries-id']);
+                                                const datmanOutflowTids = datmanOutflowTimeSeries.map(series => series['timeseries-id']);
+                                                const allTids = [...datmanTids, ...datmanInflowTids, ...datmanOutflowTids]; // Combine both arrays
         
                                                 // Iterate over all TSIDs and create extents data entries
                                                 allTids.forEach((tsid, index) => {
@@ -568,8 +692,12 @@ if (isMaintenance){
                                                         // console.log({ locData })
                                                         // Determine extent key based on tsid
                                                         let extent_key;
-                                                        if (tsid.includes('Stage') || tsid.includes('Elev') || tsid.includes('Flow')) { // Example for another condition
+                                                        if (tsid.includes('Stage') || tsid.includes('Elev')) { // Example for another condition
                                                             extent_key = 'datman';
+                                                        } else if (tsid.includes('Flow-In')) {
+                                                            extent_key = 'datman-inflow';
+                                                        } else if (tsid.includes('Flow-Out')) {
+                                                            extent_key = 'datman-outflow';
                                                         } else {
                                                             return; // Ignore if it doesn't match either condition
                                                         }
@@ -590,7 +718,7 @@ if (isMaintenance){
                                     };
         
                                     // Combine all promises for this location
-                                    timeSeriesDataPromises.push(Promise.all([...datmanPromises, timeSeriesDataExtentsApiCall()]));
+                                    timeSeriesDataPromises.push(Promise.all([...datmanPromises, ...datmanInflowPromises, ...datmanOutflowPromises, timeSeriesDataExtentsApiCall()]));
                                 }
                             }
         
@@ -599,84 +727,50 @@ if (isMaintenance){
         
                         })
                         .then(() => {
-                            console.log('All combinedData data fetched successfully:', combinedData);
-        
-                            // Check and remove all attribute ending in 0.1
+            
+                            // Step 1: Filter out locations where 'attribute' ends with '.1'
                             combinedData.forEach((dataObj, index) => {
-                                // console.log(`Processing dataObj at index ${index}:`, dataObj[`assigned-locations`]);
-        
-                                // Filter out locations where the 'attribute' ends with '.1'
-                                dataObj[`assigned-locations`] = dataObj[`assigned-locations`].filter(location => {
-                                    const attribute = location[`attribute`].toString();
-                                    // console.log(`Checking attribute: ${attribute}`);
-                                    return !attribute.endsWith('.1');
+                                // console.log(`Processing dataObj at index ${index}:`, dataObj['assigned-locations']);
+            
+                                // Filter out locations with 'attribute' ending in '.1'
+                                dataObj['assigned-locations'] = dataObj['assigned-locations'].filter(location => {
+                                    const attribute = location['attribute'].toString();
+                                    if (attribute.endsWith('.1')) {
+                                        // Log the location being removed
+                                        return false; // Filter out this location
+                                    }
+                                    return true; // Keep the location
                                 });
-        
-                                // console.log(`Updated assigned-locations for index ${index}:`, dataObj[`assigned-locations`]);
+            
+                                // console.log(`Updated assigned-locations for index ${index}:`, dataObj['assigned-locations']);
+                            });
+            
+            
+                            // Step 2: Filter out locations where 'location-id' doesn't match owner's 'assigned-locations'
+                            combinedData.forEach(dataGroup => {
+                                // Iterate over each assigned-location in the dataGroup
+                                let locations = dataGroup['assigned-locations'];
+            
+                                // Loop through the locations array in reverse to safely remove items
+                                for (let i = locations.length - 1; i >= 0; i--) {
+                                    let location = locations[i];
+            
+                                    // Find if the current location-id exists in owner's assigned-locations
+                                    let matchingOwnerLocation = location['owner']['assigned-locations'].some(ownerLoc => {
+                                        return ownerLoc['location-id'] === location['location-id'];
+                                    });
+            
+                                    // If no match, remove the location
+                                    if (!matchingOwnerLocation) {
+                                        locations.splice(i, 1);
+                                    }
+                                }
                             });
         
-                            console.log('All combinedData data filtered successfully:', combinedData);
-        
-                            if (type === "status") {
-                                // Only call createTable if no valid data exists
-                                const table = createTable(combinedData);
-        
-                                // Append the table to the specified container
-                                const container = document.getElementById('table_container_alarm_datman');
-                                container.appendChild(table);
-                            } else {
-                                // Check if there are valid lastDatmanValues in the data
-                                if (hasLastValue(combinedData)) {
-                                    // if (hasDataSpike(combinedData)) {
-                                    //     console.log("Data spike detected.");
-                                    //     // call createTable if data spike exists
-                                    //     const table = createTableDataSpike(combinedData);
-        
-                                    //     // Append the table to the specified container
-                                    //     const container = document.getElementById('table_container_alarm_datman');
-                                    //     container.appendChild(table);
-                                    // } else {
-                                    //     console.log("No data spikes detected.");
-                                    //     console.log('Valid lastDatmanValue found. Displaying image instead.');
-        
-                                    //     // Create an img element
-                                    //     const img = document.createElement('img');
-                                    //     img.src = '/apps/alarms/images/passed.png'; // Set the image source
-                                    //     img.alt = 'Process Completed'; // Optional alt text for accessibility
-                                    //     img.style.width = '50px'; // Optional: set the image width
-                                    //     img.style.height = '50px'; // Optional: set the image height
-        
-                                    //     // Get the container and append the image
-                                    //     //const container = document.getElementById('table_container_alarm_datman');
-                                    //     //container.appendChild(img);
-                                    // }
-        
-                                } else {
-                                    // Only call createTable if no valid data exists
-                                    const table = createTable(combinedData);
-        
-                                    // Append the table to the specified container
-                                    //const container = document.getElementById('table_container_alarm_datman');
-                                    //container.appendChild(table);
-                                }
-                            }
-        
                             //loadingIndicator.style.display = 'none';
-                            console.log("TEST: ", combinedData);
-
-                            try{
-                                getBasinDataBtn.disabled = true;
-                                initialize(combinedData);
-                                disableButtons();
-                            } catch (error){
-                                console.error(error);
-                                errorMessageDiv.classList.add("show");
-                            } finally {
-                                loadingDiv.classList.remove('show');
-                            }
+                            getDataToInitialize(combinedData);
         
-                            
-        
+        // =======================================================================================================================================
                         })
                         .catch(error => {
                             console.error('There was a problem with one or more fetch operations:', error);
@@ -687,6 +781,26 @@ if (isMaintenance){
                 .catch(error => {
                     console.error('There was a problem with the initial fetch operation:', error);
                     //loadingIndicator.style.display = 'none';
+
+                    if (!haveClass(errorMessageDiv,"show")){
+                        errorMessageDiv.classList.add('show');
+                    };
+
+                    if (haveClass(loadingDiv,"show")){
+                        loadingDiv.classList.remove('show');
+                    };
+
+                    errorMessageText.innerHTML = `There was a problem with the initial fetch operation, see console log for more information.<br>${error}`;
+
+                    gageName.innerHTML = '';
+                    basinName.innerHTML = '';
+                    gageName.disabled = true;
+                    basinName.disabled = true;
+                    beginDate.disabled = true;
+                    endDate.disabled = true;
+                    dailyCheckbox.disabled = true;
+                    hourlyCheckbox.dasable = true;
+
                 });
         
             function filterByLocationCategory(array, setCategory) {
@@ -843,7 +957,7 @@ if (isMaintenance){
                         const assignedLocations = item['assigned-locations'];
                         // Check if assigned-locations is an object
                         if (typeof assignedLocations !== 'object' || assignedLocations === null) {
-                            console.log('No assigned-locations found in basin:', item);
+                            consoleLog(3, 'No assigned-locations found in basin:', item);
                             allLocationsValid = false; // Mark as invalid since no assigned locations are found
                             continue; // Skip to the next basin
                         }
@@ -872,7 +986,7 @@ if (isMaintenance){
         
                                     // Step 1: If the entry is null, set hasValidValue to false
                                     if (entry === null) {
-                                        // console.log(`Entry at index ${i} is null and not valid.`);
+                                        //console.log(`Entry at index ${i} is null and not valid.`);
                                         hasValidValue = false;
                                         continue; // Skip to the next iteration, this is not valid
                                     }
@@ -882,7 +996,7 @@ if (isMaintenance){
                                         // console.log(`Valid entry found at index ${i}:`, entry);
                                         hasValidValue = true; // Set to true only if we have a valid entry
                                     } else {
-                                        console.log(`Entry at index ${i} has an invalid value:`, entry.value);
+                                        consoleLog(3, `Entry at index ${i} has an invalid value:`, entry.value);
                                         hasValidValue = false; // Invalid value, so set it to false
                                     }
                                 }
@@ -894,7 +1008,7 @@ if (isMaintenance){
                                     // console.log("No valid entries found in the array.");
                                 }
                             } else {
-                                console.log(`datmanTsidArray is either empty or not an array for location ${locationName}.`);
+                                consoleLog(3, `datmanTsidArray is either empty or not an array for location ${locationName}.`);
                             }
         
                             // If no valid values found in the current location, mark as invalid
@@ -907,7 +1021,7 @@ if (isMaintenance){
         
                 // Return true only if all locations are valid
                 if (allLocationsValid) {
-                    console.log('All locations have valid entries.');
+                    consoleLog(3, 'All locations have valid entries.');
                     return true;
                 } else {
                     // console.log('Some locations are missing valid entries.');
@@ -925,7 +1039,7 @@ if (isMaintenance){
                         const assignedLocations = item['assigned-locations'];
                         // Check if assigned-locations is an object
                         if (typeof assignedLocations !== 'object' || assignedLocations === null) {
-                            console.log('No assigned-locations found in basin:', item);
+                            consoleLog(3, 'No assigned-locations found in basin:', item);
                             continue; // Skip to the next basin
                         }
         
@@ -960,59 +1074,59 @@ if (isMaintenance){
                                     return true; // Return true if any spike is found
                                 }
                             } else {
-                                console.log(`No valid 'datman-api-data' found in location ${locationName}.`);
+                                consoleLog(3, `No valid 'datman-api-data' found in location ${locationName}.`);
                             }
                         }
                     }
                 }
         
                 // Return false if no data spikes were found
-                console.log('No data spikes detected in any location.');
+                consoleLog(3, 'No data spikes detected in any location.');
                 return false;
             }
         
             function hasDataSpike(data) {
                 // Iterate through each key in the data object
-                for (const locationIndex in data) {
-                    if (data.hasOwnProperty(locationIndex)) { // Ensure the key belongs to the object
-                        const item = data[locationIndex];
-                        console.log(`Checking basin ${parseInt(locationIndex) + 1}:`, item); // Log the current item being checked
+                // for (const locationIndex in data) {
+                //     if (data.hasOwnProperty(locationIndex)) { // Ensure the key belongs to the object
+                //         const item = data[locationIndex];
+                //         console.log(`Checking basin ${parseInt(locationIndex) + 1}:`, item); // Log the current item being checked
         
-                        const assignedLocations = item['assigned-locations'];
-                        // Check if assigned-locations is an object
-                        if (typeof assignedLocations !== 'object' || assignedLocations === null) {
-                            console.log('No assigned-locations found in basin:', item);
-                            continue; // Skip to the next basin
-                        }
+                //         const assignedLocations = item['assigned-locations'];
+                //         // Check if assigned-locations is an object
+                //         if (typeof assignedLocations !== 'object' || assignedLocations === null) {
+                //             console.log('No assigned-locations found in basin:', item);
+                //             continue; // Skip to the next basin
+                //         }
         
-                        // Iterate through each location in assigned-locations
-                        for (const locationName in assignedLocations) {
-                            const location = assignedLocations[locationName];
-                            console.log(`Checking location: ${locationName}`, location); // Log the current location being checked
-                            const datmanMaxValue = location['datman-max-value'][0][`value`];
-                            const datmanMinValue = location['datman-min-value'][0][`value`];
+                //         // Iterate through each location in assigned-locations
+                //         for (const locationName in assignedLocations) {
+                //             const location = assignedLocations[locationName];
+                //             console.log(`Checking location: ${locationName}`, location); // Log the current location being checked
+                //             const datmanMaxValue = location['datman-max-value'][0][`value`];
+                //             const datmanMinValue = location['datman-min-value'][0][`value`];
         
-                            // Check if datmanMaxValue or datmanMinValue exists
-                            if (datmanMaxValue || datmanMinValue) {
-                                // Check if the max value exceeds 999 or the min value is less than -999
-                                if (datmanMaxValue > 999) {
-                                    console.log(`Data spike detected in location ${locationName}: max = ${datmanMaxValue}`);
-                                    return true; // Return true if any spike is found
-                                }
-                                if (datmanMinValue < -999) {
-                                    console.log(`Data spike detected in location ${locationName}: min = ${datmanMinValue}`);
-                                    return true; // Return true if any spike is found
-                                }
-                            } else {
-                                console.log(`No valid 'datman-max-value' or 'datman-min-value' found in location ${locationName}.`);
-                            }
-                        }
-                    }
-                }
+                //             // Check if datmanMaxValue or datmanMinValue exists
+                //             if (datmanMaxValue || datmanMinValue) {
+                //                 // Check if the max value exceeds 999 or the min value is less than -999
+                //                 if (datmanMaxValue > 999) {
+                //                     console.log(`Data spike detected in location ${locationName}: max = ${datmanMaxValue}`);
+                //                     return true; // Return true if any spike is found
+                //                 }
+                //                 if (datmanMinValue < -999) {
+                //                     console.log(`Data spike detected in location ${locationName}: min = ${datmanMinValue}`);
+                //                     return true; // Return true if any spike is found
+                //                 }
+                //             } else {
+                //                 console.log(`No valid 'datman-max-value' or 'datman-min-value' found in location ${locationName}.`);
+                //             }
+                //         }
+                //     }
+                // }
         
-                // Return false if no data spikes were found
-                console.log('No data spikes detected in any location.');
-                return false;
+                // // Return false if no data spikes were found
+                // console.log('No data spikes detected in any location.');
+                // return false;
             }
         
             function createTable(data) {
@@ -1255,22 +1369,35 @@ if (isMaintenance){
                     table.appendChild(dataRow);
                 }
             }
-        });
+        } catch (error) {
+            console.error(error);
+            errorMessageDiv.classList.add('show');
+            loadingDiv.classList.remove('show');
+        };
 
-    } catch (error){
-        console.error(error);
-        errorMessageDiv.classList.add('show');
-        loadingDiv.classList.remove('show');
-    }
+    });
+
+    // Add function to popup window button
+    //popupWindowBtn.addEventListener('click', blurBackground);
 
 }
 
+function getDataToInitialize(data){
 
-
-/*======================= Functions For Script =======================*/
-function initialize(data) {
+    if (haveClass(loadingDiv,'show')){
+        loadingDiv.classList.remove('show');
+    };
 
     fetchedData = data;
+
+    basinName.disabled = false;
+    gageName.disabled = false;
+
+    endDate.disabled = false;
+    beginDate.disabled = false;
+
+    dailyCheckbox.disabled = false;
+    hourlyCheckbox.disabled = false;
 
     instructionBtn.addEventListener('click', function(){
         instructionsDiv.classList.toggle('show');
@@ -1305,12 +1432,6 @@ function initialize(data) {
 
     // Json initial function (Alert)
     getJSONBtn.addEventListener('click', jsonNoDataMessage)
-
-    // Add dark mode functionality
-    darkModeCheckbox.addEventListener('click', toggleDarkModeBtn);
-
-    // Add function to popup window button
-    //popupWindowBtn.addEventListener('click', blurBackground);
 
     // Extract the names of the basins with the list of gages
     let namesObject = getNames(data);
@@ -2038,7 +2159,6 @@ function initialize(data) {
     });
 
     getBasinDataBtn.addEventListener('click', getAllBasinGages);
-
 }
 
 // Check is an element have a specific class
