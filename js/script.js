@@ -2017,7 +2017,7 @@ function getDataToInitialize(data){
                         element['assigned-locations'].forEach(gage => {
                             if (gage['location-id'] === gageName.value){
                                 let datmanEndDate = gage['extents-data']['datman'][0]['lastUpdate'].split('T')[0].split('-');
-                                let hourlyEndDate = gage['extents-data']['datman'][1]['lastUpdate'].split('T')[0].split('-');
+                                //let hourlyEndDate = gage['extents-data']['datman'][1]['lastUpdate'].split('T')[0].split('-');
 
                                 let QAQCDate = `${datmanEndDate[1]}-${datmanEndDate[2]}-${datmanEndDate[0]}`;
                                 metadataHighlightValues.innerHTML = `Data QA/QC Up Until: <strong>${QAQCDate}</strong>`;
